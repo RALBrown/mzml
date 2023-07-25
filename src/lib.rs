@@ -477,25 +477,21 @@ mod tests {
         use std::fs::File;
         let path = std::path::Path::new("./test_data/small.pwiz.1.1.mzML");
         let file = File::open(path).unwrap();
-        let file =
-            File::open(r"C:\Users\Robert\Downloads\G00480_LN_B1_80_85MPb_60_min_40C_10uL_40isCID_1-A,2_5-4-2022_17-30-52.mzML")
-                .unwrap();
         let mzml_struct = LazyMzML::new(file).unwrap();
-        let mut total = 0.0;
-        let mut total_time = Time::new::<minute>(0.0);
-        let intensities: Vec<f64> = mzml_struct
+        let intensities: Vec<_> = mzml_struct
             .iter_spectrum()
             .par_bridge()
             .map(|spectrum| {
                 let time = spectrum.rt().unwrap();
-                if let Ok(array) = spectrum.peaks() {
-                    let intensity = array[0].0;
-                    return intensity;
+                let array = spectrum.peaks();
+                match array {
+                    Ok(intensity) => return (intensity[0].0, time),
+                    _ => panic!(),
                 }
-                0.0
             })
             .collect();
-        let total: f64 = intensities.iter().sum();
+        let total: f64 = intensities.iter().map(|a| a.0).sum();
+        let total_time: Time = intensities.iter().map(|a| a.1).sum();
         println!(
             "{}",
             total_time
