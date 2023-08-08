@@ -88,9 +88,10 @@ impl LazyMzML {
 impl<'a> LazyMzML {
     /**Return an iterator of MassScan objects contained in the LazyMzML.
      */
-    pub fn iter_scan(&'a self) -> impl Iterator<Item = &impl MassScan> + 'a {
+    pub fn iter_scan(&'a self) -> impl Iterator<Item = &ScanWithoutData> + 'a {
         self.mzml_struct.mzml.run.spectrum_list.spectra.iter()
     }
+
     /**Return an iterator of MassScan objects the underlying data is additionally loaded from disk to create MassSpectrum.
      */
     pub fn iter_spectrum(&'a self) -> impl Iterator<Item = impl MassScan + MassSpectrum> + 'a {
@@ -106,7 +107,7 @@ impl<'a> LazyMzML {
             })
     }
 
-    fn fetch_scan_data(&self, scan: &ScanWithoutData) -> Option<ScanWithData> {
+    pub fn fetch_scan_data(&self, scan: &ScanWithoutData) -> Option<ScanWithData> {
         const BUFFER_SIZE: usize = 8000;
         let offset = self.scan_offsets.get(&(scan.id))?;
         let file = &self.file;
@@ -255,7 +256,7 @@ struct Chromatogram {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename = "spectrum")]
 #[serde(rename_all = "camelCase")]
-struct ScanWithData {
+pub struct ScanWithData {
     #[serde(rename = "@index")]
     index: usize,
     #[serde(rename = "@id")]
@@ -271,7 +272,7 @@ struct ScanWithData {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename = "spectrum")]
 #[serde(rename_all = "camelCase")]
-struct ScanWithoutData {
+pub struct ScanWithoutData {
     #[serde(rename = "@index")]
     index: usize,
     #[serde(rename = "@id")]
