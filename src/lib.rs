@@ -130,9 +130,6 @@ impl<'a> LazyMzML {
             }
             number_of_buffers += 1;
         }
-        let mut trunc = xml_string.clone();
-        trunc.truncate(200);
-        println!("{}", trunc);
         let spectrum: ScanWithData = from_str(&xml_string).unwrap();
         Some(spectrum)
     }
