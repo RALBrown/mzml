@@ -13,7 +13,7 @@ use uom::si::time::{minute, second};
 use zune_inflate::DeflateDecoder;
 
 pub mod mass_spectrum;
-use mass_spectrum::{MassScan, MassSpectrum};
+use mass_spectrum::{ControlledVocabularyParameter, MassScan, MassSpectrum};
 
 fn base64_decode(data: String) -> Result<Vec<u8>, MzMLParseError> {
     Ok(general_purpose::STANDARD.decode(data)?)
@@ -130,6 +130,9 @@ impl<'a> LazyMzML {
             }
             number_of_buffers += 1;
         }
+        let mut trunc = xml_string.clone();
+        trunc.truncate(200);
+        println!("{}", trunc);
         let spectrum: ScanWithData = from_str(&xml_string).unwrap();
         Some(spectrum)
     }
@@ -325,6 +328,9 @@ impl MassScan for ScanWithoutData {
             .parse()
             .ok()
     }
+    fn find_cv(&self, name: String) -> Option<&ControlledVocabularyParameter> {
+        self.cv_param.iter().find(|cv| cv.name == name)
+    }
 }
 impl MassScan for ScanWithData {
     fn rt(&self) -> Option<uom::si::f32::Time> {
@@ -351,17 +357,9 @@ impl MassScan for ScanWithData {
             .parse()
             .ok()
     }
-}
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-#[serde(rename = "cvParam")]
-struct ControlledVocabularyParameter {
-    #[serde(rename = "@name")]
-    name: String,
-    #[serde(rename = "@value")]
-    value: String,
-    #[serde(rename = "@unitName")]
-    unit_name: Option<String>,
+    fn find_cv(&self, name: String) -> Option<&ControlledVocabularyParameter> {
+        self.cv_param.iter().find(|cv| cv.name == name)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -374,7 +372,11 @@ struct ScanList {
 struct Scan {
     cv_param: Vec<ControlledVocabularyParameter>,
 }
-
+impl Scan {
+    pub fn find_cv(&self, name: String) -> Option<&ControlledVocabularyParameter> {
+        self.cv_param.iter().find(|cv| cv.name == name)
+    }
+}
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct BinaryDataArrayList {
