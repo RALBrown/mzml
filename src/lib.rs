@@ -477,9 +477,13 @@ pub struct Precursor {
     #[serde(rename = "@spectrumRef")]
     reference_spectrum: String,
     #[serde(default, flatten)]
-    pub isolation_window: Vec<ControlledVocabularyParameter>,
+    pub isolation_window: CvWrapper,
 }
-
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", transparent)]
+pub struct CvWrapper {
+    pub cv_param: Vec<ControlledVocabularyParameter>,
+}
 #[cfg(test)]
 mod tests {
     use crate::*;
