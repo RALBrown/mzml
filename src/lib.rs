@@ -471,7 +471,7 @@ impl BinaryDataArray {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-struct PrecursorList {
+pub struct PrecursorList {
     pub cv_params: Vec<ControlledVocabularyParameter>,
 }
 
