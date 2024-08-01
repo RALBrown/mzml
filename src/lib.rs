@@ -264,7 +264,7 @@ pub struct ScanWithData {
     #[serde(rename = "@defaultArrayLength")]
     default_array_length: usize,
     cv_param: Vec<ControlledVocabularyParameter>,
-    precursor_list: Option<PrecursorList>,
+    pub precursor_list: Option<PrecursorList>,
     scan_list: ScanList,
     binary_data_array_list: BinaryDataArrayList,
 }
@@ -280,7 +280,7 @@ pub struct ScanWithoutData {
     #[serde(rename = "@defaultArrayLength")]
     default_array_length: usize,
     cv_param: Vec<ControlledVocabularyParameter>,
-    precursor_list: Option<PrecursorList>,
+    pub precursor_list: Option<PrecursorList>,
     scan_list: ScanList,
 }
 
@@ -471,7 +471,9 @@ impl BinaryDataArray {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-struct PrecursorList {}
+struct PrecursorList {
+    pub cv_params: Vec<ControlledVocabularyParameter>,
+}
 
 #[cfg(test)]
 mod tests {
