@@ -474,7 +474,9 @@ impl BinaryDataArray {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Precursor {
-    #[serde(default)]
+    #[serde(rename = "@spectrumRef")]
+    reference_spectrum: String,
+    #[serde(default, flatten)]
     pub isolation_window: Vec<ControlledVocabularyParameter>,
 }
 
