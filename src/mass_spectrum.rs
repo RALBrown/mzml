@@ -5,6 +5,7 @@ pub trait MassScan {
     fn rt(&self) -> Option<uom::si::f32::Time>;
     fn ms_level(&self) -> Option<u16>;
     fn find_cv(&self, name: String) -> Option<&ControlledVocabularyParameter>;
+    fn cvs(&self) -> &Vec<ControlledVocabularyParameter>;
 }
 pub trait MassSpectrum {
     type Err;

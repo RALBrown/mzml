@@ -325,6 +325,9 @@ impl MassScan for ScanWithoutData {
             .parse()
             .ok()
     }
+    fn cvs(&self) -> &Vec<ControlledVocabularyParameter> {
+        &self.cv_param
+    }
     fn find_cv(&self, name: String) -> Option<&ControlledVocabularyParameter> {
         self.cv_param.iter().find(|cv| cv.name == name)
     }
@@ -353,6 +356,9 @@ impl MassScan for ScanWithData {
             .value
             .parse()
             .ok()
+    }
+    fn cvs(&self) -> &Vec<ControlledVocabularyParameter> {
+        &self.cv_param
     }
     fn find_cv(&self, name: String) -> Option<&ControlledVocabularyParameter> {
         self.cv_param.iter().find(|cv| cv.name == name)
