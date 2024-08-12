@@ -476,13 +476,20 @@ impl BinaryDataArray {
 pub struct Precursor {
     #[serde(rename = "@spectrumRef")]
     reference_spectrum: String,
-    #[serde(default, flatten)]
-    pub isolation_window: CvWrapper,
+    #[serde(default)]
+    pub isolation_window: IsolationWindow,
 }
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase", transparent)]
-pub struct CvWrapper {
+#[serde(rename_all = "camelCase")]
+pub struct IsolationWindow {
     pub cv_param: Vec<ControlledVocabularyParameter>,
+}
+impl Default for IsolationWindow {
+    fn default() -> Self {
+        IsolationWindow {
+            cv_param: Vec::new(),
+        }
+    }
 }
 #[cfg(test)]
 mod tests {
