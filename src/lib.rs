@@ -472,18 +472,17 @@ impl BinaryDataArray {
 }
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct PrecursorList{
+pub struct PrecursorList {
     #[serde(rename = "$value")]
-    precursors: Vec<Precursor>,
+    pub precursors: Vec<Precursor>,
 }
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Precursor {
     #[serde(rename = "@spectrumRef")]
-    reference_spectrum: String,
+    pub reference_spectrum: String,
     #[serde(default)]
     pub isolation_window: IsolationWindow,
-
 }
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -504,12 +503,13 @@ mod tests {
     fn integration() {
         use rayon::iter::ParallelBridge;
         use rayon::prelude::ParallelIterator;
-        
+
         // let resp = reqwest::blocking::get("https://github.com/HUPO-PSI/mzML/blob/master/examples/2min.mzML").expect("request failed");
         // let body = resp.text().expect("body invalid");
         // let mut file = tempfile::tempfile().unwrap();
         // std::io::copy(&mut body.as_bytes(), &mut file).expect("failed to copy content");
-        let file = std::fs::File::open(std::path::Path::new(r"test_data\small.pwiz.1.1.mzML")).unwrap();
+        let file =
+            std::fs::File::open(std::path::Path::new(r"test_data\small.pwiz.1.1.mzML")).unwrap();
         let mzml_struct = LazyMzML::new(file).unwrap();
         let intensities: Vec<_> = mzml_struct
             .iter_spectrum()
