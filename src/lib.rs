@@ -265,7 +265,7 @@ pub struct ScanWithData {
     default_array_length: usize,
     cv_param: Vec<ControlledVocabularyParameter>,
     #[serde(default)]
-    pub precursor_list: Vec<Precursor>,
+    pub precursor_list: Option<PrecursorList>,
     scan_list: ScanList,
     binary_data_array_list: BinaryDataArrayList,
 }
@@ -282,7 +282,7 @@ pub struct ScanWithoutData {
     default_array_length: usize,
     cv_param: Vec<ControlledVocabularyParameter>,
     #[serde(default)]
-    pub precursor_list: Vec<Precursor>,
+    pub precursor_list: Option<PrecursorList>,
     scan_list: ScanList,
 }
 
@@ -470,7 +470,12 @@ impl BinaryDataArray {
         Ok(data)
     }
 }
-
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PrecursorList{
+    #[serde(rename = "$value")]
+    precursors: Vec<Precursor>,
+}
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Precursor {
@@ -478,6 +483,7 @@ pub struct Precursor {
     reference_spectrum: String,
     #[serde(default)]
     pub isolation_window: IsolationWindow,
+
 }
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -498,9 +504,12 @@ mod tests {
     fn integration() {
         use rayon::iter::ParallelBridge;
         use rayon::prelude::ParallelIterator;
-        use std::fs::File;
-        let path = std::path::Path::new("./test_data/small.pwiz.1.1.mzML");
-        let file = File::open(path).unwrap();
+        
+        // let resp = reqwest::blocking::get("https://github.com/HUPO-PSI/mzML/blob/master/examples/2min.mzML").expect("request failed");
+        // let body = resp.text().expect("body invalid");
+        // let mut file = tempfile::tempfile().unwrap();
+        // std::io::copy(&mut body.as_bytes(), &mut file).expect("failed to copy content");
+        let file = std::fs::File::open(std::path::Path::new(r"test_data\small.pwiz.1.1.mzML")).unwrap();
         let mzml_struct = LazyMzML::new(file).unwrap();
         let intensities: Vec<_> = mzml_struct
             .iter_spectrum()
@@ -523,5 +532,8 @@ mod tests {
         );
         println!("{}", total);
         assert_eq!(total, 9938.47898941423);
+        for s in mzml_struct.iter_scan() {
+            println!("{:?}", s.precursor_list);
+        }
     }
 }
