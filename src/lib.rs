@@ -480,7 +480,7 @@ pub struct PrecursorList {
 #[serde(rename_all = "camelCase")]
 pub struct Precursor {
     #[serde(rename = "@spectrumRef")]
-    pub reference_spectrum: String,
+    pub reference_spectrum: Option<String>,
     #[serde(default)]
     pub isolation_window: IsolationWindow,
 }
