@@ -287,8 +287,7 @@ pub struct ScanWithoutData {
 }
 
 impl MassSpectrum for ScanWithData {
-    type Err = MzMLParseError;
-    fn peaks(&self) -> Result<Vec<(f64, f64)>, Self::Err> {
+    fn peaks(&self) -> Result<Vec<(f64, f64)>, MzMLParseError> {
         let mz_array = self
             .binary_data_array_list
             .find_binary_by_cv_name("m/z array")

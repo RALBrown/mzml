@@ -8,8 +8,7 @@ pub trait MassScan {
     fn cvs(&self) -> &Vec<ControlledVocabularyParameter>;
 }
 pub trait MassSpectrum {
-    type Err;
-    fn peaks(&self) -> Result<Vec<(f64, f64)>, Self::Err>;
+    fn peaks(&self) -> Result<Vec<(f64, f64)>, crate::MzMLParseError>;
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
