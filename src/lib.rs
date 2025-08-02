@@ -7,9 +7,11 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::io::{BufReader, Read, Seek, SeekFrom};
+use std::ops::Deref;
 use thiserror::Error;
+use delegate::delegate;
 use uom::si::f32::Time;
-use uom::si::time::{minute, second};
+use uom::si::time::{millisecond, minute, second};
 use zune_inflate::DeflateDecoder;
 
 pub mod mass_spectrum;
@@ -130,8 +132,8 @@ impl<'a> LazyMzML {
             }
             number_of_buffers += 1;
         }
-        let spectrum: ScanWithData = from_str(&xml_string).unwrap();
-        Some(spectrum)
+        let spectrum: ScanData = from_str(&xml_string).unwrap();
+        Some(ScanWithData { scan: scan.to_owned(), binary_data_array_list: spectrum.binary_data_array_list })
     }
 }
 
@@ -253,24 +255,44 @@ struct Chromatogram {
     index: u16,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename = "spectrum")]
 #[serde(rename_all = "camelCase")]
-pub struct ScanWithData {
-    #[serde(rename = "@index")]
-    index: usize,
-    #[serde(rename = "@id")]
-    id: String,
-    #[serde(rename = "@defaultArrayLength")]
-    default_array_length: usize,
-    cv_param: Vec<ControlledVocabularyParameter>,
-    #[serde(default)]
-    pub precursor_list: Option<PrecursorList>,
-    scan_list: ScanList,
+struct ScanData {
     binary_data_array_list: BinaryDataArrayList,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename = "spectrum")]
+#[serde(rename_all = "camelCase")]
+pub struct ScanWithData {
+    #[serde(flatten)]
+    scan: ScanWithoutData, 
+    binary_data_array_list: BinaryDataArrayList,
+}
+impl ScanWithData {
+    delegate! {
+        to self.scan {
+            // pub fn index(&self) -> usize;
+            // pub fn id(&self) -> &str;
+            // pub fn default_array_length(&self) -> usize;
+            pub fn cvs(&self) -> &Vec<ControlledVocabularyParameter>;
+            pub fn find_cv(&self, name: String) -> Option<&ControlledVocabularyParameter>;
+            pub fn rt(&self) -> Option<uom::si::f32::Time>;
+            pub fn ms_level(&self) -> Option<u16>;
+            pub fn ion_fill_time(&self) -> Option<uom::si::f32::Time>;
+        }
+    }
+}
+impl Deref for ScanWithData {
+    type Target = ScanWithoutData;
+
+    fn deref(&self) -> &Self::Target {
+        &self.scan
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename = "spectrum")]
 #[serde(rename_all = "camelCase")]
 pub struct ScanWithoutData {
@@ -332,31 +354,30 @@ impl MassScan for ScanWithoutData {
     fn find_cv(&self, name: String) -> Option<&ControlledVocabularyParameter> {
         self.cv_param.iter().find(|cv| cv.name == name)
     }
-}
-impl MassScan for ScanWithData {
-    fn rt(&self) -> Option<uom::si::f32::Time> {
+    fn ion_fill_time(&self) -> Option<uom::si::f32::Time> {
         let rt_cv = self
-            .scan_list
-            .scan
-            .first()?
             .cv_param
             .iter()
-            .find(|c| c.name.find("scan start time").is_some())?;
+            .find(|c| c.name.find("ion injection time").is_some())?;
         let time: f32 = rt_cv.value.parse().unwrap();
         let unit_string = rt_cv.unit_name.as_ref()?;
         match &unit_string[..] {
-            "minute" => Some(Time::new::<minute>(time)),
+            "millisecond" => Some(Time::new::<millisecond>(time)),
             "second" => Some(Time::new::<second>(time)),
-            _ => Some(Time::new::<minute>(time)),
+            "minute" => Some(Time::new::<minute>(time)),
+            
+            _ => Some(Time::new::<millisecond>(time)),
         }
     }
+}
+
+
+impl MassScan for ScanWithData {
+    fn rt(&self) -> Option<uom::si::f32::Time> {
+        self.rt()
+    }
     fn ms_level(&self) -> Option<u16> {
-        self.cv_param
-            .iter()
-            .find(|c| c.name.find("ms level").is_some())?
-            .value
-            .parse()
-            .ok()
+        self.ms_level()
     }
     fn cvs(&self) -> &Vec<ControlledVocabularyParameter> {
         &self.cv_param
@@ -364,24 +385,42 @@ impl MassScan for ScanWithData {
     fn find_cv(&self, name: String) -> Option<&ControlledVocabularyParameter> {
         self.cv_param.iter().find(|cv| cv.name == name)
     }
+    fn ion_fill_time(&self) -> Option<uom::si::f32::Time> {
+        self.ion_fill_time()
+    }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct ScanList {
     scan: Vec<Scan>,
 }
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-struct Scan {
+pub struct Scan {
     cv_param: Vec<ControlledVocabularyParameter>,
 }
 impl Scan {
     pub fn find_cv(&self, name: String) -> Option<&ControlledVocabularyParameter> {
         self.cv_param.iter().find(|cv| cv.name == name)
     }
+    pub fn ion_fill_time(&self) -> Option<uom::si::f32::Time> {
+        let rt_cv = self
+            .cv_param
+            .iter()
+            .find(|c| c.name.find("ion injection time").is_some())?;
+        let time: f32 = rt_cv.value.parse().unwrap();
+        let unit_string = rt_cv.unit_name.as_ref()?;
+        match &unit_string[..] {
+            "millisecond" => Some(Time::new::<millisecond>(time)),
+            "second" => Some(Time::new::<second>(time)),
+            "minute" => Some(Time::new::<minute>(time)),
+            
+            _ => Some(Time::new::<millisecond>(time)),
+        }
+    }
 }
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct BinaryDataArrayList {
     #[serde(rename = "@count")]
@@ -401,7 +440,7 @@ impl BinaryDataArrayList {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct BinaryDataArray {
     #[serde(rename = "@encodedLength")]
@@ -469,13 +508,13 @@ impl BinaryDataArray {
         Ok(data)
     }
 }
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PrecursorList {
     #[serde(rename = "$value")]
     pub precursors: Vec<Precursor>,
 }
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Precursor {
     #[serde(rename = "@spectrumRef")]
@@ -483,7 +522,7 @@ pub struct Precursor {
     #[serde(default)]
     pub isolation_window: IsolationWindow,
 }
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct IsolationWindow {
     pub cv_param: Vec<ControlledVocabularyParameter>,

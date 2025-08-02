@@ -6,12 +6,13 @@ pub trait MassScan {
     fn ms_level(&self) -> Option<u16>;
     fn find_cv(&self, name: String) -> Option<&ControlledVocabularyParameter>;
     fn cvs(&self) -> &Vec<ControlledVocabularyParameter>;
+    fn ion_fill_time(&self) -> Option<uom::si::f32::Time>;
 }
 pub trait MassSpectrum {
     fn peaks(&self) -> Result<Vec<(f64, f64)>, crate::MzMLParseError>;
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 #[serde(rename = "cvParam")]
 pub struct ControlledVocabularyParameter {
