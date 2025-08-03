@@ -356,6 +356,8 @@ impl MassScan for ScanWithoutData {
     }
     fn ion_fill_time(&self) -> Option<uom::si::f32::Time> {
         let rt_cv = self
+            .scan_list
+            .scan.first()?
             .cv_param
             .iter()
             .find(|c| c.name.find("ion injection time").is_some())?;

@@ -18,6 +18,6 @@ fn main() {
     let mzml_struct = LazyMzML::new(file).unwrap();
     for spectrum in mzml_struct.iter_scan()
     {
-        println!("{:?}", spectrum.rt());
+        println!("{:?}{:?}", spectrum.rt(), spectrum.ion_fill_time());
     }
 }
