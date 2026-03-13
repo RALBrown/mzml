@@ -3,6 +3,7 @@
 use base64::{engine::general_purpose, Engine as _};
 use quick_xml::de::{from_reader, from_str};
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
@@ -309,7 +310,9 @@ pub struct ScanWithoutData {
 }
 
 impl MassSpectrum for ScanWithData {
-    fn peaks(&self) -> Result<Vec<(f64, f64)>, MzMLParseError> {
+    type Error = MzMLParseError;
+
+    fn peaks(&self) -> Result<Cow<[(f64, f64)]>, MzMLParseError> {
         let mz_array = self
             .binary_data_array_list
             .find_binary_by_cv_name("m/z array")
@@ -320,7 +323,7 @@ impl MassSpectrum for ScanWithData {
             .expect("All spectra should have an intensity array");
         let mz = mz_array.decode()?;
         let intensity = intensity_array.decode()?;
-        Ok(mz.into_iter().zip(intensity.into_iter()).collect())
+        Ok(Cow::Owned(mz.into_iter().zip(intensity.into_iter()).collect()))
     }
 }
 impl MassScan for ScanWithoutData {

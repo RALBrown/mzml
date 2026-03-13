@@ -1,3 +1,6 @@
+use std::borrow::Cow;
+use std::error::Error;
+use std::fmt::{Debug, Display};
 use serde::{Deserialize, Serialize};
 
 pub trait MassScan {
@@ -9,7 +12,9 @@ pub trait MassScan {
     fn ion_fill_time(&self) -> Option<uom::si::f32::Time>;
 }
 pub trait MassSpectrum {
-    fn peaks(&self) -> Result<Vec<(f64, f64)>, crate::MzMLParseError>;
+    type Error: Error + Debug + Display + Send + Sync + 'static;
+
+    fn peaks(&self) -> Result<Cow<[(f64, f64)]>, Self::Error>;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
