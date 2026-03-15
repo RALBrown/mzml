@@ -114,26 +114,32 @@ impl<'a> LazyMzML {
         const BUFFER_SIZE: usize = 8000;
         let offset = self.scan_offsets.get(&(scan.id))?;
         let file = &self.file;
-        let mut xml_string = String::from("");
+        let tag = b"</spectrum>";
+        let mut xml_bytes = Vec::new();
         let mut buffer = [0; BUFFER_SIZE];
         let mut reader = BufReader::new(file);
         reader.seek(SeekFrom::Start(*offset as u64)).unwrap();
-        let mut number_of_buffers: usize = 0;
         loop {
-            let number_bytes = reader.read(&mut buffer[..]).ok()?;
-            xml_string.push_str(std::str::from_utf8(&buffer[..number_bytes]).ok()?);
-            if let Some(n) = xml_string[xml_string
-                .len()
-                .checked_sub(BUFFER_SIZE)
-                .unwrap_or_default()..]
-                .find(r"</spectrum>")
+            let n = reader.read(&mut buffer).ok()?;
+            if n == 0 { break; } // EOF
+            
+            xml_bytes.extend_from_slice(&buffer[..n]);
+
+            // Only search the "new" area (plus the length of the tag to catch splits)
+            let search_start = xml_bytes.len()
+                .saturating_sub(n + tag.len());
+            
+            if let Some(pos) = xml_bytes[search_start..]
+                .windows(tag.len())
+                .position(|window| window == tag) 
             {
-                xml_string.truncate(number_of_buffers * BUFFER_SIZE + n + 11);
+                // Truncate to the end of the tag
+                xml_bytes.truncate(search_start + pos + tag.len());
                 break;
             }
-            number_of_buffers += 1;
         }
-        let spectrum: ScanData = from_str(&xml_string).unwrap();
+        let final_string = String::from_utf8(xml_bytes).ok()?;
+        let spectrum: ScanData = from_str(&final_string).unwrap();
         Some(ScanWithData { scan: scan.to_owned(), binary_data_array_list: spectrum.binary_data_array_list })
     }
 }
