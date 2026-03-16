@@ -91,10 +91,16 @@ impl LazyMzML {
 impl<'a> LazyMzML {
     /**Return an iterator of MassScan objects contained in the LazyMzML.
      */
-    pub fn iter_scan(&'a self) -> impl Iterator<Item = &ScanWithoutData> + 'a {
+    pub fn iter_scan(&'a self) -> impl Iterator<Item = &'a ScanWithoutData> + 'a {
         self.mzml_struct.mzml.run.spectrum_list.spectra.iter()
     }
 
+    /**Return an interator of chromatogram objects contained in the LazyMzML.
+     * Chromatograms are preloaded.
+     */
+    pub fn iter_chromatogram(&'a self) -> impl Iterator<Item = &'a Chromatogram> + 'a {
+        self.mzml_struct.mzml.run.chromatogram_list.chromatograms.iter()
+    }
     /**Return an iterator of MassScan objects the underlying data is additionally loaded from disk to create MassSpectrum.
      */
     pub fn iter_spectrum(&'a self) -> impl Iterator<Item = impl MassScan + MassSpectrum> + 'a {
@@ -252,14 +258,26 @@ struct ChromatogramList {
     count: u16,
     #[serde(rename = "$value")]
     chromatograms: Vec<Chromatogram>,
+
 }
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-struct Chromatogram {
+pub struct Chromatogram {
     #[serde(rename = "@id")]
-    id: String,
+    pub id: String,
     #[serde(rename = "@index")]
     index: u16,
+    binary_data_array_list: BinaryDataArrayList,
+}
+impl Chromatogram{
+    pub fn trace(&self)->Option<Vec<(f64,f64)>>{
+        let retention_times_blob = self.binary_data_array_list.find_binary_by_cv_name("time array")?;
+        let intensities_blob = self.binary_data_array_list.find_binary_by_cv_name("intensity array")?;
+
+        Some(retention_times_blob.decode().ok()?.into_iter()
+                .zip( intensities_blob.decode().ok()?)
+                .collect())
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -583,6 +601,13 @@ mod tests {
         assert_eq!(total, 9938.47898941423);
         for s in mzml_struct.iter_scan() {
             println!("{:?}", s.precursor_list);
+        }
+
+        let chrom = mzml_struct.mzml_struct.mzml.run.chromatogram_list
+            .chromatograms.iter()
+            .find(|&chrom| chrom.id == "TIC").unwrap();
+        for point in chrom.trace().unwrap(){
+            print!("{point:?}");
         }
     }
 }
