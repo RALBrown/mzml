@@ -11,10 +11,10 @@ use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::ops::Deref;
 use thiserror::Error;
 use delegate::delegate;
-use uom::si::f32::Time;
-use uom::si::time::{millisecond, minute, second};
+use crate::units::{cv_to_time_f32, TimeUnit, MsUnit};
 use zune_inflate::DeflateDecoder;
 
+pub mod units;
 pub mod mass_spectrum;
 use mass_spectrum::{ControlledVocabularyParameter, MassScan, MassSpectrum};
 
@@ -270,13 +270,26 @@ pub struct Chromatogram {
     binary_data_array_list: BinaryDataArrayList,
 }
 impl Chromatogram{
+    #[deprecated(note = "Use `trace_with_time` instead to get unit-typed retention times.")]
     pub fn trace(&self)->Option<Vec<(f64,f64)>>{
         let retention_times_blob = self.binary_data_array_list.find_binary_by_cv_name("time array")?;
         let intensities_blob = self.binary_data_array_list.find_binary_by_cv_name("intensity array")?;
-
         Some(retention_times_blob.decode().ok()?.into_iter()
                 .zip( intensities_blob.decode().ok()?)
                 .collect())
+    }
+
+    pub fn trace_with_time(&self) -> Option<Vec<(uom::si::f64::Time, f64)>> {
+        let retention_times_blob = self.binary_data_array_list.find_binary_by_cv_name("time array")?;
+        let intensities_blob = self.binary_data_array_list.find_binary_by_cv_name("intensity array")?;
+        Some(
+            retention_times_blob
+                .decode_as_time()
+                .ok()?
+                .into_iter()
+                .zip(intensities_blob.decode().ok()?)
+                .collect(),
+        )
     }
 }
 
@@ -358,19 +371,13 @@ impl MassScan for ScanWithoutData {
             .first()?
             .cv_param
             .iter()
-            .find(|c| c.name.find("scan start time").is_some())?;
-        let time: f32 = rt_cv.value.parse().unwrap();
-        let unit_string = rt_cv.unit_name.as_ref()?;
-        match &unit_string[..] {
-            "minute" => Some(Time::new::<minute>(time)),
-            "second" => Some(Time::new::<second>(time)),
-            _ => Some(Time::new::<minute>(time)),
-        }
+            .find(|c| c.name.contains("scan start time"))?;
+        cv_to_time_f32(rt_cv, TimeUnit::Minute)
     }
     fn ms_level(&self) -> Option<u16> {
         self.cv_param
             .iter()
-            .find(|c| c.name.find("ms level").is_some())?
+            .find(|c| c.name.contains("ms level"))?
             .value
             .parse()
             .ok()
@@ -387,16 +394,8 @@ impl MassScan for ScanWithoutData {
             .scan.first()?
             .cv_param
             .iter()
-            .find(|c| c.name.find("ion injection time").is_some())?;
-        let time: f32 = rt_cv.value.parse().unwrap();
-        let unit_string = rt_cv.unit_name.as_ref()?;
-        match &unit_string[..] {
-            "millisecond" => Some(Time::new::<millisecond>(time)),
-            "second" => Some(Time::new::<second>(time)),
-            "minute" => Some(Time::new::<minute>(time)),
-            
-            _ => Some(Time::new::<millisecond>(time)),
-        }
+            .find(|c| c.name.contains("ion injection time"))?;
+        cv_to_time_f32(rt_cv, TimeUnit::Millisecond)
     }
 }
 
@@ -437,16 +436,8 @@ impl Scan {
         let rt_cv = self
             .cv_param
             .iter()
-            .find(|c| c.name.find("ion injection time").is_some())?;
-        let time: f32 = rt_cv.value.parse().unwrap();
-        let unit_string = rt_cv.unit_name.as_ref()?;
-        match &unit_string[..] {
-            "millisecond" => Some(Time::new::<millisecond>(time)),
-            "second" => Some(Time::new::<second>(time)),
-            "minute" => Some(Time::new::<minute>(time)),
-            
-            _ => Some(Time::new::<millisecond>(time)),
-        }
+            .find(|c| c.name.contains("ion injection time"))?;
+        cv_to_time_f32(rt_cv, TimeUnit::Millisecond)
     }
 }
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -464,7 +455,7 @@ impl BinaryDataArrayList {
             array
                 .cv_param
                 .iter()
-                .any(|c| c.name.find(cv_name).is_some())
+                .any(|c| c.name.contains(cv_name))
         })
     }
 }
@@ -494,6 +485,19 @@ impl BinaryDataArray {
             }
         }
         (zlib, float_size)
+    }
+    pub fn ms_unit(&self) -> Option<MsUnit> {
+        MsUnit::from_cv_params(&self.cv_param)
+    }
+
+    /// Decode as a time array, applying unit conversion to SI base units (seconds).
+    /// LLVM vectorizes the scale multiply; for second-valued arrays the factor is 1.0.
+    pub fn decode_as_time(&self) -> Result<Vec<uom::si::f64::Time>, MzMLParseError> {
+        use crate::units::TimeUnit;
+        let raw = self.decode()?;
+        let unit = TimeUnit::try_from_cv_params(&self.cv_param)
+            .unwrap_or(TimeUnit::Second);
+        Ok(raw.into_iter().map(|v| unit.to_quantity_f64(v)).collect())
     }
     /**Return the decoded data as a Vec.
      */
@@ -591,7 +595,7 @@ mod tests {
             })
             .collect();
         let total: f64 = intensities.iter().map(|a| a.0).sum();
-        let total_time: Time = intensities.iter().map(|a| a.1).sum();
+        let total_time: uom::si::f32::Time = intensities.iter().map(|a| a.1).sum();
         println!(
             "{}",
             total_time

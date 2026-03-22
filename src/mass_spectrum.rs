@@ -1,7 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::error::Error;
 use std::fmt::{Debug, Display};
-use serde::{Deserialize, Serialize};
 
 pub trait MassScan {
     ///Return retention time in minutes.
@@ -25,6 +25,8 @@ pub struct ControlledVocabularyParameter {
     pub name: String,
     #[serde(rename = "@value")]
     pub value: String,
+    #[serde(rename = "@unitAccession")]
+    pub unit_accession: Option<String>,
     #[serde(rename = "@unitName")]
     pub unit_name: Option<String>,
 }
