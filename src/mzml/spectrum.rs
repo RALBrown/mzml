@@ -29,8 +29,9 @@ pub struct ScanWithData {
 impl ScanWithData {
     delegate! {
         to self.scan {
-            pub fn cvs(&self) -> &Vec<ControlledVocabularyParameter>;
-            pub fn find_cv(&self, name: String) -> Option<&ControlledVocabularyParameter>;
+            pub fn cvs(&self) -> &[ControlledVocabularyParameter];
+            pub fn find_cv(&self, name: &str) -> Option<&ControlledVocabularyParameter>;
+            pub fn find_cv_by_accession(&self, accession: &str) -> Option<&ControlledVocabularyParameter>;
             pub fn rt(&self) -> Option<uom::si::f32::Time>;
             pub fn ms_level(&self) -> Option<u16>;
             pub fn ion_fill_time(&self) -> Option<uom::si::f32::Time>;
@@ -68,15 +69,15 @@ impl MassSpectrum for ScanWithData {
     fn peaks(&self) -> Result<Cow<[(f64, f64)]>, MzMLParseError> {
         let mz_array = self
             .binary_data_array_list
-            .find_binary_by_cv_name("m/z array")
+            .find_binary_by_cv_accession("MS:1000514")
             .expect("All spectra should have an m/z array");
         let intensity_array = self
             .binary_data_array_list
-            .find_binary_by_cv_name("intensity array")
+            .find_binary_by_cv_accession("MS:1000515")
             .expect("All spectra should have an intensity array");
         let mz = mz_array.decode()?;
         let intensity = intensity_array.decode()?;
-        Ok(Cow::Owned(mz.into_iter().zip(intensity.into_iter()).collect()))
+        Ok(Cow::Owned(mz.into_iter().zip(intensity).collect()))
     }
 }
 
@@ -101,12 +102,16 @@ impl MassScan for ScanWithoutData {
             .ok()
     }
 
-    fn cvs(&self) -> &Vec<ControlledVocabularyParameter> {
+    fn cvs(&self) ->  &[ControlledVocabularyParameter] {
         &self.cv_param
     }
 
-    fn find_cv(&self, name: String) -> Option<&ControlledVocabularyParameter> {
+    fn find_cv(&self, name: &str) -> Option<&ControlledVocabularyParameter> {
         self.cv_param.iter().find(|cv| cv.name == name)
+    }
+
+    fn find_cv_by_accession(&self, accession: &str) -> Option<&ControlledVocabularyParameter> {
+        self.cv_param.iter().find(|cv| cv.accession == accession)
     }
 
     fn ion_fill_time(&self) -> Option<uom::si::f32::Time> {
@@ -130,12 +135,16 @@ impl MassScan for ScanWithData {
         self.ms_level()
     }
 
-    fn cvs(&self) -> &Vec<ControlledVocabularyParameter> {
+    fn cvs(&self) ->  &[ControlledVocabularyParameter] {
         &self.cv_param
     }
 
-    fn find_cv(&self, name: String) -> Option<&ControlledVocabularyParameter> {
-        self.cv_param.iter().find(|cv| cv.name == name)
+    fn find_cv(&self, name: &str) -> Option<&ControlledVocabularyParameter> {
+        self.find_cv(name)
+    }
+
+    fn find_cv_by_accession(&self, accession: &str) -> Option<&ControlledVocabularyParameter> {
+        self.find_cv_by_accession(accession)
     }
 
     fn ion_fill_time(&self) -> Option<uom::si::f32::Time> {
@@ -156,8 +165,12 @@ pub struct Scan {
 }
 
 impl Scan {
-    pub fn find_cv(&self, name: String) -> Option<&ControlledVocabularyParameter> {
+    pub fn find_cv(&self, name: &str) -> Option<&ControlledVocabularyParameter> {
         self.cv_param.iter().find(|cv| cv.name == name)
+    }
+
+    pub fn find_cv_by_accession(&self, accession: &str) -> Option<&ControlledVocabularyParameter> {
+        self.cv_param.iter().find(|cv| cv.accession == accession)
     }
 
     pub fn ion_fill_time(&self) -> Option<uom::si::f32::Time> {
@@ -187,12 +200,7 @@ pub struct Precursor {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub struct IsolationWindow {
     pub cv_param: Vec<ControlledVocabularyParameter>,
-}
-
-impl Default for IsolationWindow {
-    fn default() -> Self {
-        IsolationWindow { cv_param: Vec::new() }
-    }
 }

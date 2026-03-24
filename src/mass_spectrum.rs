@@ -4,11 +4,12 @@ use std::error::Error;
 use std::fmt::{Debug, Display};
 
 pub trait MassScan {
-    ///Return retention time in minutes.
+    ///Return retention time as uom time quantity.
     fn rt(&self) -> Option<uom::si::f32::Time>;
     fn ms_level(&self) -> Option<u16>;
-    fn find_cv(&self, name: String) -> Option<&ControlledVocabularyParameter>;
-    fn cvs(&self) -> &Vec<ControlledVocabularyParameter>;
+    fn find_cv(&self, name: &str) -> Option<&ControlledVocabularyParameter>;
+    fn find_cv_by_accession(&self, accession: &str) -> Option<&ControlledVocabularyParameter>;
+    fn cvs(&self) -> &[ControlledVocabularyParameter];
     fn ion_fill_time(&self) -> Option<uom::si::f32::Time>;
 }
 pub trait MassSpectrum {
@@ -23,7 +24,9 @@ pub trait MassSpectrum {
 pub struct ControlledVocabularyParameter {
     #[serde(rename = "@name")]
     pub name: String,
-    #[serde(rename = "@value")]
+    #[serde(rename = "@accession")]
+    pub accession: String,
+    #[serde(rename = "@value", default)]
     pub value: String,
     #[serde(rename = "@unitAccession")]
     pub unit_accession: Option<String>,

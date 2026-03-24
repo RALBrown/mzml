@@ -104,8 +104,11 @@ impl TryFrom<&ControlledVocabularyParameter> for TimeUnit {
 /// Intensity units from the PSI-MS ontology (MS namespace).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IntensityUnit {
-    NumberOfCounts,    // MS:1000131
-    PercentOfBasePeak, // MS:1000132
+    NumberOfCounts,         // MS:1000131
+    PercentOfBasePeak,      // MS:1000132
+    CountsPerSecond,        // MS:1000814
+    PercentOfBasePeakX100,  // MS:1000905
+    AbsorbanceUnit,         // UO:0000269
 }
 
 impl IntensityUnit {
@@ -113,6 +116,9 @@ impl IntensityUnit {
         match acc {
             "MS:1000131" => Some(Self::NumberOfCounts),
             "MS:1000132" => Some(Self::PercentOfBasePeak),
+            "MS:1000814" => Some(Self::CountsPerSecond),
+            "MS:1000905" => Some(Self::PercentOfBasePeakX100),
+            "UO:0000269" => Some(Self::AbsorbanceUnit),
             _ => None,
         }
     }
@@ -121,15 +127,19 @@ impl IntensityUnit {
         match name {
             "number of counts" => Some(Self::NumberOfCounts),
             "percent of base peak" => Some(Self::PercentOfBasePeak),
+            "counts per second" => Some(Self::CountsPerSecond),
+            "percent of base peak times 100" => Some(Self::PercentOfBasePeakX100),
+            "absorbance unit" => Some(Self::AbsorbanceUnit),
             _ => None,
         }
     }
 
-    /// Returns a `Ratio` for relative intensity; `None` for raw counts (dimensionless).
+    /// Returns a `Ratio` for relative intensity; `None` for dimensionless units.
     pub fn to_ratio_f64(self, value: f64) -> Option<Ratio> {
         match self {
             Self::PercentOfBasePeak => Some(Ratio::new::<percent>(value)),
-            Self::NumberOfCounts => None,
+            Self::PercentOfBasePeakX100 => Some(Ratio::new::<percent>(value / 100.0)),
+            Self::NumberOfCounts | Self::CountsPerSecond | Self::AbsorbanceUnit => None,
         }
     }
 }

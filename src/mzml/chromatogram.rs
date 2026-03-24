@@ -24,20 +24,34 @@ pub struct Chromatogram {
 impl Chromatogram {
     #[deprecated(note = "Use `trace_with_time` instead to get unit-typed retention times.")]
     pub fn trace(&self) -> Option<Vec<(f64, f64)>> {
-        let retention_times_blob = self.binary_data_array_list.find_binary_by_cv_name("time array")?;
-        let intensities_blob = self.binary_data_array_list.find_binary_by_cv_name("intensity array")?;
+        let retention_times_blob = self
+            .binary_data_array_list
+            .find_binary_by_cv_accession("MS:1000595")?;
+        let intensities_blob = self
+            .binary_data_array_list
+            .find_binary_by_cv_accession("MS:1000515")?;
         Some(
-            retention_times_blob.decode().ok()?.into_iter()
+            retention_times_blob
+                .decode()
+                .ok()?
+                .into_iter()
                 .zip(intensities_blob.decode().ok()?)
                 .collect(),
         )
     }
 
     pub fn trace_with_time(&self) -> Option<Vec<(uom::si::f64::Time, f64)>> {
-        let retention_times_blob = self.binary_data_array_list.find_binary_by_cv_name("time array")?;
-        let intensities_blob = self.binary_data_array_list.find_binary_by_cv_name("intensity array")?;
+        let retention_times_blob = self
+            .binary_data_array_list
+            .find_binary_by_cv_accession("MS:1000595")?;
+        let intensities_blob = self
+            .binary_data_array_list
+            .find_binary_by_cv_accession("MS:1000515")?;
         Some(
-            retention_times_blob.decode_as_time().ok()?.into_iter()
+            retention_times_blob
+                .decode_as_time()
+                .ok()?
+                .into_iter()
                 .zip(intensities_blob.decode().ok()?)
                 .collect(),
         )

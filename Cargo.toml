@@ -16,6 +16,8 @@ serde-xml-rs = "0.6.0"
 thiserror = "1.0"
 uom = "0.35.0"
 zune-inflate = "0.2"
+numpress-rs = "1.1"
+
 
 [dev-dependencies]
 stringreader = "0.1"

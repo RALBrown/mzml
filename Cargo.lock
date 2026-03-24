@@ -677,6 +677,7 @@ version = "0.2.0"
 dependencies = [
  "base64 0.21.7",
  "delegate",
+ "numpress-rs",
  "quick-xml",
  "rayon",
  "regex",
@@ -715,6 +716,12 @@ checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
 ]
+
+[[package]]
+name = "numpress-rs"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "946aff86b57fa697da00db24358cbc55d4afab1790df88f1f185a32d640db79d"
 
 [[package]]
 name = "object"
